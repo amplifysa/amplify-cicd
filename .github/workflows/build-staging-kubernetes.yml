@@ -1,0 +1,97 @@
+name: Merge, build and deploy a new staging release to Kubernetes cluster with Helm
+on:
+  workflow_call:
+    inputs:
+      default_bump:
+        description: Which type of bump to use if no conventional changelog found (major, minor or patch)
+        type: string
+        required: false
+        default: minor
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      KUBE_CONFIG_DATA_YANN:
+        required: true
+
+jobs:
+  build-main-docker-kubernetes:
+    name: Build and deploy
+    environment: staging
+    runs-on: ubuntu-20.04
+    env:
+      HELM_CHART: amplify-platform-linkedin
+
+    steps:
+      - name: Check branch is main
+        if: github.ref != 'refs/heads/main'
+        run: echo 'Please run this workflow on main branch'; exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Merge develop into main
+        id: merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@github.com"
+          git fetch origin develop
+          git merge origin/develop --ff-only
+          git push origin main
+          echo "::set-output name=merge_sha::$(git log -1 --format='%H')"
+
+      - name: Bump version and push tag
+        id: version
+        uses: mathieudutour/github-tag-action@v6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit_sha: ${{ steps.merge.outputs.merge_sha }}
+          release_branches: main
+          create_annotated_tag: true
+          default_bump: ${{ github.event.inputs.default_bump }}
+
+      - name: Add version.txt into the code
+        run: echo ${{ steps.version.outputs.new_version }} > version.txt
+
+      - name: Docker login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          no-cache: true
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_version }}
+            ghcr.io/${{ github.repository }}:latest
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Install specific version of Helm
+        uses: azure/setup-helm@v2.0
+        with:
+          version: 'v3.8.2'
+
+      - name: Upgrade Helm chart
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > kube.config
+          sed -i "s/^appVersion:.*$/appVersion: ${{ steps.version.outputs.new_version }}/" deployments/k8s/Chart.yaml
+          helm --kubeconfig=./kube.config upgrade ${{ env.HELM_CHART }} deployments/k8s/ \
+            --install \
+            --values=deployments/k8s/environments/staging/values.yaml \
+            --set imageTag=${{ steps.version.outputs.new_version }}
