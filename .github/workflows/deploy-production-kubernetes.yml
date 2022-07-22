@@ -1,0 +1,66 @@
+name: Deploy a production release to Kubernetes cluster with Helm
+on:
+  workflow_call:
+    inputs:
+      helm_version:
+        type: string
+        required: true
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      KUBE_CONFIG_DATA_YANN:
+        required: true
+
+jobs:
+  deploy-production-kubernetes:
+    name: Deploy
+    environment: production
+    runs-on: ubuntu-20.04
+    env:
+      HELM_CHART: amplify-platform-linkedin
+
+    steps:
+      - name: Check branch is main
+        if: github.ref != 'refs/heads/main'
+        run: echo 'Please run this workflow on main branch'; exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get the latest release version from git tag
+        id: tag
+        run: |
+          tag_name=$(git describe --match "v[0-9]*" --abbrev=0)
+          echo "::set-output name=release_version::${tag_name:1}"
+
+      - name: Docker login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Install specific version of Helm
+        uses: azure/setup-helm@v2.0
+        with:
+          version: 'v${{ inputs.helm_version }}'
+
+      - name: Upgrade Helm chart
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > kube.config
+          sed -i "s/^appVersion:.*$/appVersion: ${{ steps.tag.outputs.release_version }}/" deployments/k8s/Chart.yaml
+          helm --kubeconfig=./kube.config upgrade ${{ env.HELM_CHART }} deployments/k8s/ \
+            --install \
+            --values=deployments/k8s/environments/production/values.yaml \
+            --set imageTag=${{ steps.tag.outputs.release_version }}

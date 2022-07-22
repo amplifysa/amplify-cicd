@@ -2,6 +2,9 @@ name: Merge, build and deploy a new staging release to Kubernetes cluster with H
 on:
   workflow_call:
     inputs:
+      helm_version:
+        type: string
+        required: true
       default_bump:
         description: Which type of bump to use if no conventional changelog found (major, minor or patch)
         type: string
@@ -12,7 +15,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      KUBE_CONFIG_DATA_YANN:
+      KUBE_CONFIG_DATA:
         required: true
 
 jobs:
@@ -83,7 +86,7 @@ jobs:
       - name: Install specific version of Helm
         uses: azure/setup-helm@v2.0
         with:
-          version: 'v3.8.2'
+          version: 'v${{ inputs.helm_version }}'
 
       - name: Upgrade Helm chart
         run: |
