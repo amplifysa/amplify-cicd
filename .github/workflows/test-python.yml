@@ -1,17 +1,15 @@
 name: Test project
 on:
   workflow_call:
+    inputs:
+      python-version:
+        type: string
+        required: true
 
 jobs:
   test-python:
     name: Lint and test
     runs-on: ubuntu-latest
-    env:
-      PYTHON_VERSION: "3.10.4"
-      AMPLIFY_SERVICE_URL: "https://test.com"
-      AMPLIFY_SERVICE_USER: "user"
-      AMPLIFY_SERVICE_PASSWORD: "password"
-      DEFAULT_CPC_MAX: 350
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -19,7 +17,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ inputs.python-version }}
 
       - name: Install python dependencies with pipenv
         run: |
@@ -33,4 +31,4 @@ jobs:
           pipenv run isort --check .
 
       - name: Run python tests
-        run: pipenv run pytest
+        run: PIPENV_DOTENV_LOCATION=.env.cicd pipenv run pytest
