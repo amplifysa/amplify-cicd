@@ -10,7 +10,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      KUBE_CONFIG_DATA_YANN:
+      KUBE_CONFIG_DATA:
         required: true
 
 jobs:
