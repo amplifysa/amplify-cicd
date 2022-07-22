@@ -58,7 +58,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > kube.config
           sed -i "s/^appVersion:.*$/appVersion: ${{ steps.tag.outputs.release_version }}/" deployments/k8s/Chart.yaml
-          helm --kubeconfig=./kube.config upgrade ${{ github.repository }} deployments/k8s/ \
+          helm --kubeconfig=./kube.config upgrade ${{ github.repository.name }} deployments/k8s/ \
             --install \
             --values=deployments/k8s/environments/production/values.yaml \
             --set imageTag=${{ steps.tag.outputs.release_version }}
