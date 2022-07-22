@@ -1,0 +1,36 @@
+name: Test project
+on:
+  workflow_call:
+
+jobs:
+  test-python:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.10.4"
+      AMPLIFY_SERVICE_URL: "https://test.com"
+      AMPLIFY_SERVICE_USER: "user"
+      AMPLIFY_SERVICE_PASSWORD: "password"
+      DEFAULT_CPC_MAX: 350
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install python dependencies with pipenv
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
+
+      - name: Run python linters
+        run: |
+          pipenv run black --check .
+          pipenv run flake8 .
+          pipenv run isort --check .
+
+      - name: Run python tests
+        run: pipenv run pytest
