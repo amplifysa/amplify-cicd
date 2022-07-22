@@ -8,8 +8,6 @@ on:
         required: false
         default: minor
     secrets:
-      GITHUB_TOKEN:
-        required: true
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
