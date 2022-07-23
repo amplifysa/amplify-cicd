@@ -16,8 +16,15 @@ jobs:
 
       - name: Setup python
         uses: actions/setup-python@v2
+        id: setup-python
         with:
           python-version: ${{ inputs.python_version }}
+
+      - name: Cache pipenv
+        uses: actions/cache@v2
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
 
       - name: Install python dependencies with pipenv
         run: |
