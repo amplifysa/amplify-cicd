@@ -10,7 +10,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      KUBE_CONFIG_DATA:
+      KUBE_CONFIG_BASE64:
         required: true
 
 jobs:
@@ -56,7 +56,7 @@ jobs:
 
       - name: Upgrade Helm chart
         run: |
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > kube.config
+          echo "${{ secrets.KUBE_CONFIG_BASE64 }}" | base64 -d > kube.config
           sed -i "s/^appVersion:.*$/appVersion: ${{ steps.tag.outputs.release_version }}/" deployments/k8s/Chart.yaml
           helm --kubeconfig=./kube.config upgrade ${{ github.event.repository.name }} deployments/k8s/ \
             --install \
