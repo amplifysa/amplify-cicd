@@ -28,7 +28,7 @@ jobs:
 
       - name: Install python dependencies with pipenv
         run: |
-          pip install pipenv
+          pip install pipenv==2022.8.15
           pipenv install --deploy --dev
 
       - name: Run python linters
