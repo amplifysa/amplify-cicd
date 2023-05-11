@@ -32,7 +32,7 @@ jobs:
         run: echo 'Please run this workflow on main branch'; exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Merge develop into main
         id: merge
