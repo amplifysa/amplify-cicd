@@ -42,7 +42,7 @@ jobs:
           git config user.name "Amplify DevOps"
           git config user.email "devops@amplify.ooo"
           git fetch origin develop
-          git merge origin/develop --ff-only --allow-unrelated-histories
+          git merge origin/develop --ff-only
           git push origin main
           echo "::set-output name=merge_sha::$(git log -1 --format='%H')"
 
